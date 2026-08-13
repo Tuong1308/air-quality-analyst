@@ -3,7 +3,7 @@ import argparse
 from src.config import CITIES
 from src.extract import extract_one_city_one_day
 from src.transform import transform_air_quality, transform_weather
-from src.load import get_engine, load_hourly_naive
+from src.load import get_engine, load_hourly_upsert
 
 
 def run_one_day(target_date: str) -> None:
@@ -18,7 +18,7 @@ def run_one_day(target_date: str) -> None:
         df_weather = transform_weather(city_id, target_date)
 
         print(f"[{city_id}] loading...")
-        load_hourly_naive(df_air, engine)
+        load_hourly_upsert(df_air, engine)
 
     print(f"Done: {target_date}")
 
