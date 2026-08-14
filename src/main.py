@@ -6,6 +6,8 @@ from src.config import CITIES
 from src.extract import extract_one_city_one_day
 from src.transform import transform_air_quality, transform_weather
 from src.load import get_engine, load_hourly_upsert
+from src.aggregate import aggregate_daily_air_quality, load_daily_weather
+
 
 
 def run_one_day(target_date: str, engine=None) -> int:
@@ -22,7 +24,8 @@ def run_one_day(target_date: str, engine=None) -> int:
 
             print(f"[{city_id}] transforming...")
             df_air = transform_air_quality(city_id, target_date)
-            df_weather = transform_weather(city_id, target_date)  # noqa: F841
+            df_weather = transform_weather(city_id, target_date)
+            load_daily_weather(df_weather, engine)
 
             print(f"[{city_id}] loading...")
             load_hourly_upsert(df_air, engine)
@@ -35,6 +38,13 @@ def run_one_day(target_date: str, engine=None) -> int:
     if failed_cities:
         print(f"Done with errors: {target_date} — failed: {', '.join(failed_cities)}")
         return 1
+    
+    # Batch UTC ngày X đóng góp dữ liệu cho local_date X (17 giờ)
+    # và local_date X+1 (7 giờ) do lệch +7h — phải aggregate lại cả hai.
+    print("Aggregating daily layer...")
+    next_date = (date.fromisoformat(target_date) + timedelta(days=1)).isoformat()
+    aggregate_daily_air_quality(engine, target_date)
+    aggregate_daily_air_quality(engine, next_date)
 
     print(f"Done: {target_date}")
     return 0
