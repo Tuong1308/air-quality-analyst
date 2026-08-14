@@ -1,0 +1,33 @@
+{
+  "latitude": 16.063269,
+  "longitude": 108.23864,
+  "generationtime_ms": 7.552623748779297,
+  "utc_offset_seconds": 25200,
+  "timezone": "Asia/Ho_Chi_Minh",
+  "timezone_abbreviation": "GMT+7",
+  "elevation": 6.0,
+  "daily_units": {
+    "time": "iso8601",
+    "precipitation_sum": "mm",
+    "windspeed_10m_max": "km/h",
+    "temperature_2m_max": "°C",
+    "temperature_2m_min": "°C"
+  },
+  "daily": {
+    "time": [
+      "2025-09-16"
+    ],
+    "precipitation_sum": [
+      10.8
+    ],
+    "windspeed_10m_max": [
+      20.2
+    ],
+    "temperature_2m_max": [
+      31.7
+    ],
+    "temperature_2m_min": [
+      24.8
+    ]
+  }
+}
