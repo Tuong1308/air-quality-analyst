@@ -1,6 +1,7 @@
 import json
 from datetime import date as date_type
 from zoneinfo import ZoneInfo
+from src.logger import log
 
 import pandas as pd
 
@@ -58,7 +59,7 @@ def validate_air_quality(df: pd.DataFrame) -> pd.DataFrame:
     # Tầng 1 — Loại bỏ: thiếu khóa thì không lưu được
     missing_key = df["city_id"].isna() | df["datetime_utc"].isna()
     if missing_key.any():
-        print(f"  VALIDATION: loại {missing_key.sum()} dòng thiếu khóa")
+        log.warning(f"  VALIDATION: loại {missing_key.sum()} dòng thiếu khóa")
         df = df[~missing_key].copy()
 
     # Tầng 2 — Đặt NULL: giá trị âm vô nghĩa vật lý, nhưng giữ các cột khác
@@ -66,20 +67,20 @@ def validate_air_quality(df: pd.DataFrame) -> pd.DataFrame:
                 "sulphur_dioxide", "carbon_monoxide"]:
         negative = df[col] < 0
         if negative.any():
-            print(f"  VALIDATION: {negative.sum()} giá trị âm ở {col} -> NULL")
+            log.warning(f"  VALIDATION: {negative.sum()} giá trị âm ở {col} -> NULL")
             df.loc[negative, col] = None
             df.loc[negative, "validation_flags"].apply(lambda f: f.append(f"NEGATIVE_{col.upper()}"))
 
     # Tầng 3 — Cảnh báo, GIỮ LẠI: có thể là sự kiện thật (cháy rừng)
     extreme = df["pm2_5"] > 1000
     if extreme.any():
-        print(f"  VALIDATION WARNING: {extreme.sum()} dòng PM2.5 > 1000 (giữ lại)")
+        log.warning(f"  VALIDATION WARNING: {extreme.sum()} dòng PM2.5 > 1000 (giữ lại)")
         df.loc[extreme, "validation_flags"].apply(lambda f: f.append("PM25_EXCEEDS_1000"))
 
     # Tầng 3 — Vi phạm định nghĩa vật lý: PM2.5 là tập con của PM10
     violation = df["pm2_5"] > df["pm10"]
     if violation.any():
-        print(f"  VALIDATION ERROR: {violation.sum()} dòng PM2.5 > PM10 (giữ lại)")
+        log.error(f"  VALIDATION ERROR: {violation.sum()} dòng PM2.5 > PM10 (giữ lại)")
         df.loc[violation, "validation_flags"].apply(lambda f: f.append("PM25_GT_PM10"))
 
     return df

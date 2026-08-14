@@ -2,6 +2,7 @@ import os
 from dotenv import load_dotenv
 from sqlalchemy import create_engine
 from sqlalchemy import text
+from src.logger import log
 
 load_dotenv()
 
@@ -46,7 +47,7 @@ def load_hourly_upsert(df, engine) -> None:
     with engine.begin() as conn:
         conn.execute(insert_sql, records)
 
-    print(f"Upserted {len(records)} rows.")
+    log.info(f"Upserted {len(records)} rows.")
 
 
 if __name__ == "__main__":

@@ -2,6 +2,7 @@ import json
 import requests
 from requests.exceptions import ConnectionError, Timeout, HTTPError
 from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
+from src.logger import log
 
 from datetime import date as date_type
 
@@ -57,7 +58,7 @@ def save_raw(data: dict, city_id: str, target_date: str, source: str) -> None:
     file_path = day_dir / f"{city_id}_{source}.json"
     with open(file_path, "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, indent=2)
-    print(f"Saved: {file_path}")
+    log.info(f"Saved: {file_path}")
 
 
 def extract_one_city_one_day(city_id: str, target_date: str) -> None:

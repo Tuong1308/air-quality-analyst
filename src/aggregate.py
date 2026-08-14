@@ -1,5 +1,6 @@
 import pandas as pd
 from sqlalchemy import text
+from src.logger import log
 
 from src.config import WHO_PM25_THRESHOLD
 
@@ -77,7 +78,7 @@ def aggregate_daily_air_quality(engine, target_date: str) -> int:
     with engine.begin() as conn:
         conn.execute(upsert_sql, records)
 
-    print(f"  Aggregated {len(records)} daily rows for {target_date}")
+    log.info(f"  Aggregated {len(records)} daily rows for {target_date}")
     return len(records)
 
 
