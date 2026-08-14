@@ -21,7 +21,7 @@ def load_hourly_upsert(df, engine) -> None:
     columns = [
         "city_id", "datetime_utc", "datetime_local", "local_date", "local_hour",
         "pm2_5", "pm10", "nitrogen_dioxide", "ozone",
-        "sulphur_dioxide", "carbon_monoxide", "uv_index",
+        "sulphur_dioxide", "carbon_monoxide", "uv_index", "validation_flags",
     ]
 
     insert_sql = text(f"""
@@ -37,7 +37,8 @@ def load_hourly_upsert(df, engine) -> None:
             ozone = EXCLUDED.ozone,
             sulphur_dioxide = EXCLUDED.sulphur_dioxide,
             carbon_monoxide = EXCLUDED.carbon_monoxide,
-            uv_index = EXCLUDED.uv_index
+            uv_index = EXCLUDED.uv_index,
+            validation_flags = EXCLUDED.validation_flags
     """)
 
     records = df[columns].to_dict(orient="records")
