@@ -38,3 +38,7 @@
 2026-08-14 17:08:26 | INFO    |   Aggregated 6 daily rows for 2026-08-10
 2026-08-14 17:08:26 | INFO    |   Aggregated 6 daily rows for 2026-08-11
 2026-08-14 17:08:26 | INFO    | Done: 2026-08-10
+2026-08-14 20:42:57 | WARNING |   VALIDATION: 1 giá trị âm ở pm2_5 -> NULL
+2026-08-14 20:42:57 | WARNING |   VALIDATION WARNING: 1 dòng PM2.5 > 1000 (giữ lại)
+2026-08-14 20:42:57 | ERROR   |   VALIDATION ERROR: 1 dòng PM2.5 > PM10 (giữ lại)
+2026-08-14 20:42:57 | WARNING |   VALIDATION: loại 1 dòng thiếu khóa
