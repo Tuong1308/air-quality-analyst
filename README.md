@@ -13,46 +13,29 @@ actually drives pollution here.
 ## Architecture
 
 ```mermaid
-flowchart LR
-    subgraph SRC[" SOURCES "]
-        direction TB
-        A1["Air Quality API<br/><sub>hourly · 7 pollutants</sub>"]
-        A2["Historical Weather API<br/><sub>daily · rain, wind, temp</sub>"]
-    end
+flowchart TD
+    A["Open-Meteo APIs<br/>Air Quality · hourly &nbsp;&nbsp; Weather · daily"]
+    B["BRONZE — raw JSON on disk<br/>data/raw/{date}/{city}.json"]
+    C["SILVER — fact_hourly_air_quality<br/>80,328 rows · 24 per city-day"]
+    D["GOLD — daily air quality + weather<br/>3,360 + 3,353 rows"]
+    E["analysis.sql · charts.py"]
 
-    subgraph BRONZE[" BRONZE "]
-        direction TB
-        B1["data/raw/{date}/{city}.json<br/><sub>untouched API response</sub>"]
-    end
+    A ==>|"extract.py — retry with backoff"| B
+    B ==>|"transform.py — UTC to ICT, validate"| C
+    C ==>|"aggregate.py — roll up to daily"| D
+    D ==> E
 
-    subgraph SILVER[" SILVER "]
-        direction TB
-        C1["fact_hourly_air_quality<br/><sub>80,328 rows · 24 per city-day</sub>"]
-    end
+    classDef src  fill:#E6F1FB,stroke:#185FA5,stroke-width:2px,color:#042C53
+    classDef brz  fill:#FAECE7,stroke:#993C1D,stroke-width:2px,color:#4A1B0C
+    classDef slv  fill:#F1EFE8,stroke:#5F5E5A,stroke-width:2px,color:#2C2C2A
+    classDef gld  fill:#FAEEDA,stroke:#854F0B,stroke-width:2px,color:#412402
+    classDef out  fill:#E1F5EE,stroke:#0F6E56,stroke-width:2px,color:#04342C
 
-    subgraph GOLD[" GOLD "]
-        direction TB
-        D1["fact_daily_air_quality<br/><sub>3,360 rows</sub>"]
-        D2["fact_daily_weather<br/><sub>3,353 rows</sub>"]
-    end
-
-    subgraph OUT[" OUTPUT "]
-        direction TB
-        E1["analysis.sql<br/><sub>10 queries</sub>"]
-        E2["charts.py<br/><sub>8 charts</sub>"]
-    end
-
-    A1 & A2 -->|"extract.py<br/>retry + backoff"| B1
-    B1 -->|"transform.py<br/>timezone + validate"| C1
-    C1 -->|"aggregate.py<br/>roll up to daily"| D1
-    A2 -.->|"aggregate.py"| D2
-    D1 & D2 --> E1 & E2
-
-    style SRC fill:#f8f9fa,stroke:#adb5bd
-    style BRONZE fill:#fff4e6,stroke:#e8590c
-    style SILVER fill:#f1f3f5,stroke:#868e96
-    style GOLD fill:#fff9db,stroke:#f08c00
-    style OUT fill:#e7f5ff,stroke:#1971c2
+    class A src
+    class B brz
+    class C slv
+    class D gld
+    class E out
 ```
 
 Raw JSON stays on disk so transforms can be re-run without re-fetching. The three
