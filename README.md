@@ -98,9 +98,8 @@ Plotting all nineteen months in sequence — rather than averaging by calendar
 month — shows Hanoi peaking at 68.9 then 67.0 µg/m³ two Aprils running. A single
 spike could be an accident; the same spike in consecutive years is a pattern.
 
-Ho Chi Minh City runs in antiphase: April is its *cleanest* month. That contrast
-turns out to be the first hint of something the rest of this analysis keeps
-running into — the six cities do not behave like one country.
+Ho Chi Minh City runs in antiphase: April is its *cleanest* month. Hold on to
+that contrast — it comes back.
 
 ---
 
@@ -185,6 +184,11 @@ Ho Chi Minh City reverses sign on three of four factors. Rain there arrives
 *with* higher PM2.5, not lower — a pattern that fits monsoon seasonality rather
 than rainfall washing particles out.
 
+Wind is the exception that holds everywhere: negative in all four seasons and
+all six cities, and 35% weaker on the dirtiest days. It is the only factor in
+this dataset that behaves consistently, which is why it heads the ranking in
+Part 5.
+
 Rain is the clearest case of a signal that a single coefficient nearly buried.
 Pearson correlation between rainfall and PM2.5 is only **−0.094**, which reads
 as "no relationship" — but bucketing by intensity shows every bucket declining
@@ -197,10 +201,10 @@ exist.** ([chart](charts/03_rain_effect.png))
 
 ---
 
-# Part 4 — Four assumptions the data contradicts
+# Part 4 — Testing five obvious explanations
 
 This is where the analysis earns its keep. Each of these seemed obvious enough
-to state without checking; each turned out to be wrong.
+to state without checking. Four did not survive contact with the data; one did.
 
 ### Traffic drives the daily cycle
 
@@ -225,9 +229,17 @@ Two independent checks contradict it:
 | Day-night amplitude by season | Larger in winter | Summer **35.6** vs winter **30.2** |
 
 Inversion is strongest in cold weather, so the seasonal amplitude should be
-larger in winter. It is larger in summer. Daytime convective mixing fits the
-midday trough better, but the temperature correlation below cuts against that
-too — the mechanism is genuinely unresolved here.
+larger in winter. It is larger in summer.
+
+This sits alongside Part 3 rather than against it. Comparing the extreme
+deciles, dirty days really do have a 50% wider temperature range. But across the
+full range the relationship stops being monotonic — and inversion requires it to
+be monotonic, since a wider range should mean a stronger cap every time. A
+difference between extremes is not the same as a mechanism that scales.
+
+Daytime convective mixing fits the midday trough better, but the temperature
+correlation below cuts against that too. The mechanism is genuinely unresolved
+here.
 
 ### The temperature signal is a seasonal artefact
 
