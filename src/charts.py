@@ -156,7 +156,7 @@ def chart_01_who_exceedance(engine):
     title_block(fig,
                 "552 of 557 days above the WHO limit in Hanoi",
                 "Four cities exceed it on more than 85% of days. Da Lat is the only one under 20%.")
-    add_footer(fig, "WHO 24h guideline = 15 ug/m3.  "
+    add_footer(fig, "WHO 24h guideline = 15 ug/m3.\n"
                     "Vietnam's national standard (QCVN 05:2023) allows 50 ug/m3.")
     save(fig, "01_who_exceedance")
 
@@ -295,7 +295,8 @@ def chart_03_rain_effect(engine):
     title_block(fig,
                 "Correlation said r = -0.09.  Bucketing said otherwise.",
                 "Dry days gain +1.57 ug/m3; heavy-rain days lose -1.71. Every bucket declines in order.")
-    add_footer(fig, "46% of days fall in the light-rain bucket, diluting the linear coefficient.")
+    add_footer(fig, "46% of days fall in the light-rain bucket,\n"
+                    "which dilutes the linear coefficient.")
     save(fig, "03_rain_effect")
 
 
@@ -340,7 +341,8 @@ def chart_04_weather_correlation(engine):
     title_block(fig,
                 "Wind clears the air 3.7x better than rain",
                 "Dispersion beats washout: r = -0.344 for wind against -0.094 for rainfall")
-    add_footer(fig, "Temperature (+0.233) is likely confounded by season - not a causal claim.")
+    add_footer(fig, "Temperature (+0.233) holds up when split by season - see the seasonal chart.\n"
+                    "Wind is negative in all four seasons; rain only bites in autumn.")
     save(fig, "04_weather_correlation")
 
 
@@ -408,8 +410,8 @@ def chart_05_pollution_fingerprint(engine):
                 "Hanoi burns coal.  Ho Chi Minh City burns fuel.",
                 "Hanoi's SO2 runs 12.6x Da Lat's. HCMC tops NO2 and CO despite lower PM2.5.",
                 has_legend=True)
-    add_footer(fig, "Each pollutant scaled independently; absolute values differ by "
-                    "orders of magnitude (CO ~800 vs SO2 ~26 ug/m3).")
+    add_footer(fig, "Each pollutant scaled independently - absolute values differ by\n"
+                    "orders of magnitude (CO ~800 against SO2 ~26 ug/m3).")
     save(fig, "05_pollution_fingerprint")
 
 
@@ -471,7 +473,7 @@ def chart_06_month_heatmap(engine):
     title_block(fig,
                 "Avoid April everywhere - except Ho Chi Minh City",
                 "Hanoi: 98% bad days in April. HCMC: 2% in April, but 87% in June.")
-    add_footer(fig, "* Months backed by one year of data only (~30 days). "
+    add_footer(fig, "* Months backed by one year of data only (~30 days).\n"
                     "Feb-Aug have two years (~60 days).")
     save(fig, "06_month_heatmap")
 
@@ -532,7 +534,10 @@ def chart_07_daily_rhythm(engine):
                 "Peaks at 6am and 10pm - not during rush hour",
                 "Both rush hours (shaded) land where PM2.5 is already falling",
                 has_legend=True)
-    add_footer(fig, "NO2 and O3 run in antiphase - the classic photochemical cycle.")
+    add_footer(fig, "NO2 and O3 run in antiphase - the classic photochemical cycle.\n"
+                    "The mechanism behind the overnight peak is not settled here: daytime convective\n"
+                    "mixing fits the midday trough, but thermal inversion does not - it would predict\n"
+                    "a larger winter amplitude, and summer is larger.")
     save(fig, "07_daily_rhythm")
 
 
@@ -579,7 +584,7 @@ def chart_08_episodes(engine):
     title_block(fig,
                 "Hanoi: 400 of 557 days inside a pollution episode",
                 "45 separate episodes, 9 days each on average. Da Lat recorded none.")
-    add_footer(fig, "Episode = 3 or more consecutive days above 35 ug/m3. "
+    add_footer(fig, "Episode = 3 or more consecutive days above 35 ug/m3.\n"
                     "Da Lat recorded none in 18 months.")
     save(fig, "08_episodes")
 
