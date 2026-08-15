@@ -16,7 +16,8 @@ from src.load import get_engine
 
 CHARTS_DIR = BASE_DIR / "charts"
 
-WHO_THRESHOLD = 15
+WHO_THRESHOLD = 15      # WHO 24h guideline, ug/m3
+AQI_BAD_THRESHOLD = 35  # "Unhealthy for sensitive groups"
 
 COLOR_DANGER = "#c0392b"
 COLOR_WARNING = "#e67e22"
@@ -153,9 +154,13 @@ def chart_01_who_exceedance(engine):
     ax.grid(axis="y", visible=False)
     ax.tick_params(axis="y", length=0, labelsize=11)
 
+    worst = df.iloc[-1]
+    best = df.iloc[0]
+    n_over_85 = int((df["pct_exceeding"] >= 85).sum())
     title_block(fig,
-                "552 of 557 days above the WHO limit in Hanoi",
-                "Four cities exceed it on more than 85% of days. Da Lat is the only one under 20%.")
+                f"{worst.days_exceeding} of {worst.total_days} days above the WHO limit in {worst.city}",
+                f"{n_over_85} cities exceed it on more than 85% of days. "
+                f"{best.city} is the only one under 20%.")
     add_footer(fig, "WHO 24h guideline = 15 ug/m3.\n"
                     "Vietnam's national standard (QCVN 05:2023) allows 50 ug/m3.")
     save(fig, "01_who_exceedance")
@@ -221,11 +226,18 @@ def chart_02_monthly_series(engine):
     ax.legend(ncol=3, fontsize=9.5, loc="upper center",
               bbox_to_anchor=(0.5, 1.09), columnspacing=1.6)
 
+    apr25 = pivot.loc["2025-04", "hanoi"] if "2025-04" in pivot.index else None
+    apr26 = pivot.loc["2026-04", "hanoi"] if "2026-04" in pivot.index else None
     title_block(fig,
                 "April spikes repeat in both years",
-                "Hanoi hits 69 then 67 ug/m3 two Aprils running - while HCMC dips to its yearly low",
+                f"Hanoi hits {apr25:.0f} then {apr26:.0f} ug/m3 two Aprils running - "
+                f"while HCMC dips to its yearly low",
                 has_legend=True)
-    add_footer(fig, "Months with fewer than 20 complete days excluded (Aug 2026 had 13).")
+    dropped = df[df["days"] < 20]
+    note = (f"Months with fewer than 20 complete days excluded "
+            f"({dropped.iloc[0]['month']} had {int(dropped.iloc[0]['days'])})."
+            if len(dropped) else "All months had at least 20 complete days.")
+    add_footer(fig, note)
     save(fig, "02_monthly_series")
 
 
@@ -260,6 +272,16 @@ def chart_03_rain_effect(engine):
     df = pd.read_sql(sql, engine)
     df["label"] = ["No rain", "Light\n<5mm", "Moderate\n5-20mm", "Heavy\n>20mm"]
 
+    # The headline contrasts this coefficient with the bucketed view, so read
+    # it from the database rather than repeating a remembered figure
+    rain_r = float(pd.read_sql("""
+        SELECT CORR(a.pm2_5_avg, w.precipitation_sum) AS r
+        FROM fact_daily_air_quality a
+        JOIN fact_daily_weather w
+          ON a.city_id = w.city_id AND a.local_date = w.weather_date
+        WHERE a.hours_recorded = 24
+    """, engine)["r"].iloc[0])
+
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(13, 5.8))
 
     # --- Left panel: absolute level
@@ -292,11 +314,15 @@ def chart_03_rain_effect(engine):
     ax2.set_title("Dry days push it up; heavy rain pulls it down",
                   loc="left", fontsize=11, pad=10)
 
+    dry_chg = float(df.iloc[0]["change_vs_prev"])
+    wet_chg = float(df.iloc[-1]["change_vs_prev"])
     title_block(fig,
-                "Correlation said r = -0.09.  Bucketing said otherwise.",
-                "Dry days gain +1.57 ug/m3; heavy-rain days lose -1.71. Every bucket declines in order.")
-    add_footer(fig, "46% of days fall in the light-rain bucket,\n"
-                    "which dilutes the linear coefficient.")
+                f"Correlation said r = {rain_r:.2f}.  Bucketing said otherwise.",
+                f"Dry days gain {dry_chg:+.2f} ug/m3; heavy-rain days lose {wet_chg:+.2f}. "
+                f"Every bucket declines in order.")
+    light_share = round(100 * df.iloc[1]["total_days"] / df["total_days"].sum())
+    add_footer(fig, f"{light_share}% of days fall in the light-rain bucket,\n"
+                    f"which dilutes the linear coefficient.")
     save(fig, "03_rain_effect")
 
 
@@ -338,11 +364,16 @@ def chart_04_weather_correlation(engine):
     ax.grid(axis="y", visible=False)
     ax.tick_params(axis="y", length=0, labelsize=10.5)
 
+    r_wind = float(df.loc[df["factor"] == "Wind speed", "correlation"].iloc[0])
+    r_rain = float(df.loc[df["factor"] == "Precipitation", "correlation"].iloc[0])
     title_block(fig,
-                "Wind clears the air 3.7x better than rain",
-                "Dispersion beats washout: r = -0.344 for wind against -0.094 for rainfall")
-    add_footer(fig, "Temperature (+0.233) holds up when split by season - see the seasonal chart.\n"
-                    "Wind is negative in all four seasons; rain only bites in autumn.")
+                f"Wind clears the air {abs(r_wind/r_rain):.1f}x better than rain",
+                f"Dispersion beats washout: r = {r_wind:.3f} for wind "
+                f"against {r_rain:.3f} for rainfall")
+    r_temp = float(df.loc[df["factor"] == "Max temperature", "correlation"].iloc[0])
+    add_footer(fig, f"Temperature ({r_temp:+.3f}) holds up when split by season - "
+                    f"see the seasonal chart.\n"
+                    f"Wind is negative in all four seasons; rain only bites in autumn.")
     save(fig, "04_weather_correlation")
 
 
@@ -371,6 +402,9 @@ def chart_05_pollution_fingerprint(engine):
     #                        so Da Lat's bars vanish entirely from the chart
     scaled = df.apply(lambda c: 100 * c / c.max())
 
+    # Used by both the annotation and the subtitle below
+    so2_ratio = df["SO2"].max() / df["SO2"].min()
+
     pollutants = list(df.columns)
     width = 0.19
     x = range(len(df))
@@ -391,7 +425,7 @@ def chart_05_pollution_fingerprint(engine):
               bbox_to_anchor=(0.5, 1.09), columnspacing=2)
 
     # Annotations placed in clear space above the bars
-    ax.annotate("SO2 = coal burning\n12.6x Da Lat's level",
+    ax.annotate(f"SO2 = coal burning\n{so2_ratio:.1f}x Da Lat's level",
                 xy=(0 + 0.5 * width, scaled.loc["hanoi", "SO2"]),
                 xytext=(0.55, 112),
                 fontsize=9, color=COLOR_DANGER, fontweight="bold",
@@ -408,10 +442,12 @@ def chart_05_pollution_fingerprint(engine):
 
     title_block(fig,
                 "Hanoi burns coal.  Ho Chi Minh City burns fuel.",
-                "Hanoi's SO2 runs 12.6x Da Lat's. HCMC tops NO2 and CO despite lower PM2.5.",
+                f"Hanoi's SO2 runs {so2_ratio:.1f}x Da Lat's. "
+                f"HCMC tops NO2 and CO despite lower PM2.5.",
                 has_legend=True)
-    add_footer(fig, "Each pollutant scaled independently - absolute values differ by\n"
-                    "orders of magnitude (CO ~800 against SO2 ~26 ug/m3).")
+    add_footer(fig, f"Each pollutant scaled independently - absolute values differ by\n"
+                    f"orders of magnitude (CO ~{df['CO'].max():.0f} against "
+                    f"SO2 ~{df['SO2'].max():.0f} ug/m3).")
     save(fig, "05_pollution_fingerprint")
 
 
@@ -470,11 +506,15 @@ def chart_06_month_heatmap(engine):
     cbar.set_label("Share of days above 35 ug/m3 (%)", fontsize=9.5, labelpad=8)
     cbar.ax.tick_params(labelsize=9)
 
+    apr_hanoi = pivot.loc["hanoi", 4]
+    apr_hcmc = pivot.loc["hcmc", 4]
+    jun_hcmc = pivot.loc["hcmc", 6]
     title_block(fig,
                 "Avoid April everywhere - except Ho Chi Minh City",
-                "Hanoi: 98% bad days in April. HCMC: 2% in April, but 87% in June.")
-    add_footer(fig, "* Months backed by one year of data only (~30 days).\n"
-                    "Feb-Aug have two years (~60 days).")
+                f"Hanoi: {apr_hanoi:.0f}% bad days in April. "
+                f"HCMC: {apr_hcmc:.0f}% in April, but {jun_hcmc:.0f}% in June.")
+    add_footer(fig, "* Months backed by one year of data only.\n"
+                    "The remaining months have two years behind them.")
     save(fig, "06_month_heatmap")
 
 
@@ -581,11 +621,32 @@ def chart_08_episodes(engine):
     ax.grid(axis="y", visible=False)
     ax.tick_params(axis="y", length=0, labelsize=10)
 
+    # Episode totals for the headline city, straight from the warehouse
+    hanoi_stats = pd.read_sql(f"""
+        WITH flagged AS (
+            SELECT local_date,
+                   local_date - (ROW_NUMBER() OVER (ORDER BY local_date))::int AS grp
+            FROM fact_daily_air_quality
+            WHERE hours_recorded = 24 AND city_id = 'hanoi'
+              AND pm2_5_avg > {AQI_BAD_THRESHOLD}
+        ), episodes AS (
+            SELECT COUNT(*) AS len FROM flagged GROUP BY grp HAVING COUNT(*) >= 3
+        )
+        SELECT COUNT(*) AS n_episodes,
+               SUM(len) AS days_in_episodes,
+               ROUND(AVG(len), 0) AS avg_len,
+               (SELECT COUNT(*) FROM fact_daily_air_quality
+                WHERE hours_recorded = 24 AND city_id = 'hanoi') AS total_days
+        FROM episodes
+    """, engine).iloc[0]
+
     title_block(fig,
-                "Hanoi: 400 of 557 days inside a pollution episode",
-                "45 separate episodes, 9 days each on average. Da Lat recorded none.")
-    add_footer(fig, "Episode = 3 or more consecutive days above 35 ug/m3.\n"
-                    "Da Lat recorded none in 18 months.")
+                f"Hanoi: {int(hanoi_stats.days_in_episodes)} of "
+                f"{int(hanoi_stats.total_days)} days inside a pollution episode",
+                f"{int(hanoi_stats.n_episodes)} separate episodes, "
+                f"{int(hanoi_stats.avg_len)} days each on average. Da Lat recorded none.")
+    add_footer(fig, f"Episode = 3 or more consecutive days above {AQI_BAD_THRESHOLD} ug/m3.\n"
+                    f"Da Lat recorded none.")
     save(fig, "08_episodes")
 
 

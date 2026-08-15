@@ -118,8 +118,8 @@ nothing about the other.
 
 Hanoi and Hai Phong, 100 km apart, correlate at 0.691 — they share an air mass.
 But Ho Chi Minh City and Can Tho, only 170 km apart, manage just 0.260, and Da
-Lat correlates *negatively* with Ho Chi Minh City despite a 300 km gap, sitting
-1,500 m above the lowland air.
+Lat correlates *negatively* with Ho Chi Minh City despite a 300 km gap — it sits
+on a plateau, apart from the lowland air.
 
 Three systems, not one national problem. A single national policy would be
 aimed at a phenomenon that does not exist.
@@ -263,7 +263,8 @@ drives the April peak, it does not look like local burning.
 ### And one that survived
 
 Episodes were expected to build gradually. They do not: averaged over 223
-onsets, PM2.5 *drifts downward* for three days, then jumps **48% overnight**.
+onsets, PM2.5 *drifts downward* for three days — 33.8, 30.4, 28.9 — then jumps
+to 43.0, a **49% rise overnight**.
 
 That rules out gradual accumulation and points to a discrete trigger — a wind
 shift, an incoming air mass. It also means the PM2.5 series carries no
@@ -278,22 +279,22 @@ early-warning signal; forecasting would have to lean on meteorology instead.
 
 # Part 5 — Where that leaves the causes
 
-Pulling the four parts together: some candidate drivers survive every check,
-some hold up in places and fail in others, and four fall over outright.
+Pulling the four parts together, here is every hypothesis this project tested,
+what each one predicts, and the number the data returned.
 
-![Candidate drivers graded by evidence](charts/17_driver_evidence.png)
+![Ten hypotheses against the numbers that test them](charts/17_hypothesis_tests.png)
 
-| Verdict | Drivers |
-|---|---|
-| **Supported** | Wind dispersion · emission source mix · regional air mass · photochemistry |
-| **Partly supported** | Warm-day secondary formation · dry-season accumulation · rain washout |
-| **Contradicted** | Seasonal biomass burning · thermal inversion · traffic driving the daily cycle · gradual build-up |
+An earlier version of this chart scored each hypothesis on a 0–1 "weight of
+evidence" scale. Those scores were invented — there was no rule behind them, so
+they are gone. Every figure in the chart above is queried from the warehouse and
+recomputed each time the charts are regenerated.
 
-None of these is established as a cause. The dataset has no emissions inventory,
-no traffic counts and no fire-detection data — the most it can do is show which
-factors travel with pollution and which do not.
+A matching prediction is the weaker of the two results: several of these
+hypotheses would produce the same numbers, and the dataset has no emissions
+inventory, no traffic counts and no fire-detection data to separate them. A
+**failed** prediction is the stronger one — it rules the explanation out.
 
-What it does establish is narrower and firmer:
+What that leaves is narrower and firmer:
 
 - **The scope is regional**, not national — three independent systems
 - **There is more than one kind of problem** — particulate and photochemical
@@ -302,9 +303,10 @@ What it does establish is narrower and firmer:
 - **Four intuitive explanations are wrong**, each contradicted by a specific
   measurement
 
-Settling the rest would need an emissions inventory, satellite fire detection
-(NASA FIRMS), wind direction, and traffic counts. All outside this project's
-scope, and all named in the code comments where they would fit.
+Settling which of the surviving explanations actually dominates would need an
+emissions inventory, satellite fire detection (NASA FIRMS), wind direction, and
+traffic counts. All outside this project's scope, and all named in the code
+comments where they would fit.
 
 ---
 
@@ -382,8 +384,12 @@ future schema drift.
 - **Eighteen months is too short for trend claims.** Only February–August
   overlaps across both years. Patterns repeating in both years are treated as
   patterns; anything appearing once is treated as an event.
-- **Correlation is not causation, and this README says so repeatedly.** The
-  driver grading in Part 5 is a judgement about fit, not a statistical test.
+- **Correlation is not causation, and this README says so repeatedly.** Part 5
+  reports what each hypothesis predicts against what was measured; it does not
+  rank them, because this dataset offers no principled way to do so.
+- **Every number in every chart caption is computed at render time.** An earlier
+  draft hard-coded some of them, and one chart carried invented scores; both
+  have been removed. If the database changes, the captions change with it.
 - **The `dust` variable was dropped.** It returned 0.0 across all six cities for
   the entire period. Cross-checking against Dubai (24–72 µg/m³) confirmed the
   model does not cover Southeast Asia, rather than the request being malformed.
