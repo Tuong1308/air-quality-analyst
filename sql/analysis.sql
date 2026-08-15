@@ -190,6 +190,40 @@ WHERE pm25_next_day IS NOT NULL
 GROUP BY rain_level
 ORDER BY rain_level;
 
+-- 3.4 Weather on a city's dirtiest days against its own cleanest days
+-- Deciles are cut WITHIN each city, so the comparison is about days rather
+-- than places: pooling all 3,341 days would put most of Da Lat in the clean
+-- group and most of Hanoi in the dirty one.
+WITH r AS (
+    SELECT a.city_id, a.pm2_5_avg,
+           w.windspeed_10m_max, w.precipitation_sum, w.temperature_2m_max,
+           (w.temperature_2m_max - w.temperature_2m_min) AS trange,
+           NTILE(10) OVER (PARTITION BY a.city_id ORDER BY a.pm2_5_avg) AS decile
+    FROM fact_daily_air_quality a
+    JOIN fact_daily_weather w
+      ON a.city_id = w.city_id AND a.local_date = w.weather_date
+    WHERE a.hours_recorded = 24
+), per_city AS (
+    SELECT city_id,
+           CASE WHEN decile = 1 THEN 'cleanest_decile' ELSE 'dirtiest_decile' END AS grp,
+           AVG(windspeed_10m_max)  AS wind,
+           AVG(precipitation_sum)  AS rain,
+           AVG(trange)             AS temp_range,
+           AVG(temperature_2m_max) AS tmax
+    FROM r WHERE decile IN (1, 10)
+    GROUP BY city_id, decile
+)
+SELECT grp,
+       ROUND(AVG(wind)::numeric, 1)       AS wind_kmh,
+       ROUND(AVG(rain)::numeric, 1)       AS rain_mm,
+       ROUND(AVG(temp_range)::numeric, 1) AS temp_range_c,
+       ROUND(AVG(tmax)::numeric, 1)       AS tmax_c
+FROM per_city
+GROUP BY grp
+ORDER BY grp;
+
+
+
 
 -- ============================================================
 -- PART 4 — TESTING FIVE OBVIOUS EXPLANATIONS
@@ -264,6 +298,54 @@ SELECT
     ROUND(CORR(nitrogen_dioxide, carbon_monoxide)::numeric, 3) AS no2_co,
     ROUND(CORR(ozone, uv_index)::numeric, 3)                   AS o3_uv
 FROM fact_hourly_air_quality;
+
+-- 4.6 Partial correlations - does each weather factor survive controlling for wind?
+-- r(A,B | C) = [r(A,B) - r(A,C)*r(B,C)] / sqrt[(1-r(A,C)^2)(1-r(B,C)^2)]
+-- Warm days tend to be calm, and rainy days tend to be windy, so a raw
+-- correlation cannot tell whether temperature and rain matter in their own right.
+WITH c AS (
+    SELECT
+        CORR(a.pm2_5_avg, w.temperature_2m_max)         AS r_pt,
+        CORR(a.pm2_5_avg, w.windspeed_10m_max)          AS r_pw,
+        CORR(w.temperature_2m_max, w.windspeed_10m_max) AS r_tw,
+        CORR(a.pm2_5_avg, w.precipitation_sum)          AS r_pr,
+        CORR(w.precipitation_sum, w.windspeed_10m_max)  AS r_rw
+    FROM fact_daily_air_quality a
+    JOIN fact_daily_weather w
+      ON a.city_id = w.city_id AND a.local_date = w.weather_date
+    WHERE a.hours_recorded = 24
+)
+SELECT
+    ROUND(r_pt::numeric, 3) AS temp_raw,
+    ROUND(((r_pt - r_pw * r_tw)
+        / SQRT((1 - POWER(r_pw, 2)) * (1 - POWER(r_tw, 2))))::numeric, 3) AS temp_given_wind,
+    ROUND(r_pr::numeric, 3) AS rain_raw,
+    ROUND(((r_pr - r_pw * r_rw)
+        / SQRT((1 - POWER(r_pw, 2)) * (1 - POWER(r_rw, 2))))::numeric, 3) AS rain_given_wind,
+    ROUND(r_tw::numeric, 3) AS temp_vs_wind,
+    ROUND(r_rw::numeric, 3) AS rain_vs_wind
+FROM c;
+
+
+-- 4.7 Significance check for the two weakest coefficients
+-- t = r * sqrt((n-2) / (1-r^2)); |t| > 2 clears the 5 percent threshold
+SELECT 'pm25_vs_ozone' AS pair, COUNT(*) AS n,
+    ROUND(CORR(pm2_5, ozone)::numeric, 3) AS r,
+    ROUND((CORR(pm2_5, ozone)
+        * SQRT((COUNT(*) - 2) / (1 - POWER(CORR(pm2_5, ozone), 2))))::numeric, 1) AS t_stat
+FROM fact_hourly_air_quality
+UNION ALL
+SELECT 'pm25_vs_rain', COUNT(*),
+    ROUND(CORR(a.pm2_5_avg, w.precipitation_sum)::numeric, 3),
+    ROUND((CORR(a.pm2_5_avg, w.precipitation_sum)
+        * SQRT((COUNT(*) - 2)
+            / (1 - POWER(CORR(a.pm2_5_avg, w.precipitation_sum), 2))))::numeric, 1)
+FROM fact_daily_air_quality a
+JOIN fact_daily_weather w
+  ON a.city_id = w.city_id AND a.local_date = w.weather_date
+WHERE a.hours_recorded = 24;
+
+
 
 
 -- ============================================================

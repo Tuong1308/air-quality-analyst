@@ -281,6 +281,15 @@ def chart_12_ranking_flip(engine):
 
 def chart_15_clean_vs_dirty(engine):
     sql = """
+        -- Deciles are cut WITHIN each city (PARTITION BY city_id), so every
+        -- comparison is a city against itself. Ranking all 3,341 days in one
+        -- pool would instead put most of Da Lat in the clean group and most of
+        -- Hanoi in the dirty one, and the weather gap would then describe where
+        -- the cities are rather than what the days were like.
+        -- The outer average weights each city equally; averaging the pooled rows
+        -- gives the same figures here, since the deciles are equally sized.
+        -- (Keep the percent sign out of SQL text: psycopg2 reads it as a
+        --  parameter placeholder, even inside a comment.)
         WITH r AS (
             SELECT a.city_id, a.pm2_5_avg,
                    w.windspeed_10m_max, w.precipitation_sum,
@@ -291,14 +300,22 @@ def chart_15_clean_vs_dirty(engine):
             JOIN fact_daily_weather w
               ON a.city_id = w.city_id AND a.local_date = w.weather_date
             WHERE a.hours_recorded = 24
+        ), per_city AS (
+            SELECT city_id,
+                   CASE WHEN decile = 1 THEN 'clean' ELSE 'dirty' END AS grp,
+                   AVG(windspeed_10m_max) AS wind,
+                   AVG(precipitation_sum) AS rain,
+                   AVG(trange)            AS temp_range,
+                   AVG(temperature_2m_max) AS tmax
+            FROM r WHERE decile IN (1, 10)
+            GROUP BY city_id, decile
         )
-        SELECT CASE WHEN decile = 1 THEN 'clean' ELSE 'dirty' END AS grp,
-               ROUND(AVG(windspeed_10m_max), 1) AS wind,
-               ROUND(AVG(precipitation_sum), 1) AS rain,
-               ROUND(AVG(trange), 1)            AS temp_range,
-               ROUND(AVG(temperature_2m_max), 1) AS tmax
-        FROM r WHERE decile IN (1, 10)
-        GROUP BY grp
+        SELECT grp,
+               ROUND(AVG(wind)::numeric, 1)       AS wind,
+               ROUND(AVG(rain)::numeric, 1)       AS rain,
+               ROUND(AVG(temp_range)::numeric, 1) AS temp_range,
+               ROUND(AVG(tmax)::numeric, 1)       AS tmax
+        FROM per_city GROUP BY grp
     """
     df = pd.read_sql(sql, engine).set_index("grp")
 
@@ -329,18 +346,19 @@ def chart_15_clean_vs_dirty(engine):
         ax.tick_params(labelsize=9)
         ax.grid(axis="x", visible=False)
 
-    n_per_decile = pd.read_sql("""
-        SELECT ROUND(COUNT(*) / 10.0, 0) AS n
+    n_per_city = pd.read_sql("""
+        SELECT ROUND(COUNT(*) / 10.0 / 6, 0) AS n
         FROM fact_daily_air_quality WHERE hours_recorded = 24
     """, engine)["n"].iloc[0]
 
     title_block(fig,
-                "Dirty days are still, dry and cloudless",
-                f"Averaged over ~{int(n_per_decile)} days in each group, "
-                f"pooled across all six cities")
-    add_footer(fig, "The direction of this association is not settled. Calm dry weather plausibly lets\n"
-                    "particles accumulate - but heavy particle loading also suppresses cloud formation,\n"
-                    "which would widen the temperature range. Both readings fit these numbers.")
+                "A city's own dirty days are stiller and drier",
+                f"Each city's top and bottom decile (~{int(n_per_city)} days each), "
+                f"then averaged across the six")
+    add_footer(fig, "Each city is compared against itself: deciles are cut within the city, so the\n"
+                    "gap describes days rather than places. Direction is still open - calm dry air\n"
+                    "lets particles build up, but heavy particle loading also suppresses cloud cover,\n"
+                    "which widens the temperature range on its own. Both readings fit these numbers.")
     save(fig, "15_clean_vs_dirty")
 
 

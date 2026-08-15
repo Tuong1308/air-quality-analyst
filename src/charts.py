@@ -344,11 +344,40 @@ def chart_04_weather_correlation(engine):
     wide = pd.read_sql(sql, engine)
     df = wide.melt(var_name="factor", value_name="correlation")
     df["correlation"] = df["correlation"].astype(float)
+
+    # Warm days tend to be calm and rainy days windy, so the raw coefficients
+    # partly measure wind twice. Partial correlations hold wind constant:
+    #   r(A,B | C) = [r(A,B) - r(A,C)*r(B,C)] / sqrt[(1-r(A,C)^2)(1-r(B,C)^2)]
+    partial = pd.read_sql("""
+        WITH c AS (
+            SELECT CORR(a.pm2_5_avg, w.temperature_2m_max)         AS r_pt,
+                   CORR(a.pm2_5_avg, w.windspeed_10m_max)          AS r_pw,
+                   CORR(w.temperature_2m_max, w.windspeed_10m_max) AS r_tw,
+                   CORR(a.pm2_5_avg, w.precipitation_sum)          AS r_pr,
+                   CORR(w.precipitation_sum, w.windspeed_10m_max)  AS r_rw
+            FROM fact_daily_air_quality a
+            JOIN fact_daily_weather w
+              ON a.city_id = w.city_id AND a.local_date = w.weather_date
+            WHERE a.hours_recorded = 24
+        )
+        SELECT ROUND(((r_pt - r_pw*r_tw)
+                   / SQRT((1-POWER(r_pw,2))*(1-POWER(r_tw,2))))::numeric, 3) AS temp_adj,
+               ROUND(((r_pr - r_pw*r_rw)
+                   / SQRT((1-POWER(r_pw,2))*(1-POWER(r_rw,2))))::numeric, 3) AS rain_adj
+        FROM c
+    """, engine).iloc[0]
+
+    adjusted = {
+        "Wind speed": None,                      # wind is the control
+        "Max temperature": float(partial.temp_adj),
+        "Precipitation": float(partial.rain_adj),
+    }
+    df["adjusted"] = df["factor"].map(adjusted)
     df = df.iloc[df["correlation"].abs().argsort()]
 
     colors = [COLOR_SAFE if v < 0 else COLOR_DANGER for v in df["correlation"]]
 
-    fig, ax = plt.subplots(figsize=(10, 4.6))
+    fig, ax = plt.subplots(figsize=(11, 5)) 
     bars = ax.barh(df["factor"], df["correlation"], color=colors, height=0.5)
 
     for bar, row in zip(bars, df.itertuples()):
@@ -357,6 +386,15 @@ def chart_04_weather_correlation(engine):
         ax.text(row.correlation + pad, bar.get_y() + bar.get_height() / 2,
                 f"{row.correlation:+.3f}", va="center", ha=ha,
                 fontsize=11, fontweight="bold", color=COLOR_TEXT)
+
+        # Mark where the coefficient lands once wind is held constant
+        if row.adjusted is not None and not pd.isna(row.adjusted):
+            ax.plot([row.adjusted], [bar.get_y() + bar.get_height() / 2],
+                    marker="|", markersize=17, markeredgewidth=2.4,
+                    color="#2c3e50", zorder=4)
+            ax.text(row.adjusted, bar.get_y() + bar.get_height() / 2 + 0.34,
+                    f"{row.adjusted:+.3f}", ha="center", fontsize=9,
+                    color="#2c3e50")
 
     ax.axvline(0, color="#34495e", linewidth=1)
     ax.set_xlim(-0.48, 0.38)
@@ -368,12 +406,14 @@ def chart_04_weather_correlation(engine):
     r_rain = float(df.loc[df["factor"] == "Precipitation", "correlation"].iloc[0])
     title_block(fig,
                 f"Wind clears the air {abs(r_wind/r_rain):.1f}x better than rain",
-                f"Dispersion beats washout: r = {r_wind:.3f} for wind "
-                f"against {r_rain:.3f} for rainfall")
+                f"Bars show the raw correlation; the tick marks where each lands "
+                f"once wind is held constant")
     r_temp = float(df.loc[df["factor"] == "Max temperature", "correlation"].iloc[0])
-    add_footer(fig, f"Temperature ({r_temp:+.3f}) holds up when split by season - "
-                    f"see the seasonal chart.\n"
-                    f"Wind is negative in all four seasons; rain only bites in autumn.")
+    add_footer(fig, f"Rainy days are also windier, so about half the rain effect is wind: "
+                    f"{r_rain:.3f} falls to {partial.rain_adj:+.3f} once wind is controlled.\n"
+                    f"Temperature barely moves ({r_temp:+.3f} to {partial.temp_adj:+.3f}), so it is "
+                    f"not wind in disguise. Wind itself is the control here,\nand stays negative in "
+                    f"all four seasons.")
     save(fig, "04_weather_correlation")
 
 
