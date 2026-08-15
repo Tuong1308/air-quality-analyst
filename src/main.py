@@ -75,14 +75,27 @@ def main():
     parser.add_argument("--date", help="Chạy 1 ngày, dạng YYYY-MM-DD")
     parser.add_argument("--start-date", help="Ngày bắt đầu (dùng kèm --end-date)")
     parser.add_argument("--end-date", help="Ngày kết thúc (dùng kèm --start-date)")
+    parser.add_argument("--yesterday", action="store_true",
+                        help="Chạy cho ngày hôm qua (dùng cho job hằng ngày)")
+    parser.add_argument("--lookback", type=int, metavar="N",
+                        help="Chạy lại N ngày gần nhất (dùng cho job lấp dữ liệu)")
     args = parser.parse_args()
 
-    if args.date:
+    if args.yesterday:
+        target = (date.today() - timedelta(days=1)).isoformat()
+        exit_code = run_one_day(target)
+    elif args.lookback:
+        end = (date.today() - timedelta(days=1)).isoformat()
+        start = (date.today() - timedelta(days=args.lookback)).isoformat()
+        exit_code = run_date_range(start, end)
+    elif args.date:
         exit_code = run_one_day(args.date)
     elif args.start_date and args.end_date:
         exit_code = run_date_range(args.start_date, args.end_date)
     else:
-        parser.error("Cần truyền --date HOẶC cả --start-date và --end-date")
+        parser.error("Cần truyền --yesterday, --lookback N, --date, hoặc --start-date + --end-date")
+
+    sys.exit(exit_code)
 
     sys.exit(exit_code)
 if __name__ == "__main__":
