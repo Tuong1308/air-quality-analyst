@@ -96,8 +96,15 @@ Weather: `precipitation_sum` (mm), `windspeed_10m_max` (km/h),
 ## Project structure
 
 ```
-airquality-etl/
+air-quality-analyst/
+├── data/
+│   └── raw/
+│       └── YYYY-MM-DD/
+│           └── {city}.json       # Raw API responses by collection date
+├── charts/                       # Generated PNG charts
+├── logs/                         # Daily ETL log files
 ├── src/
+│   ├── __init__.py
 │   ├── config.py           # 6 cities, API URLs, WHO thresholds
 │   ├── extract.py          # API calls, tenacity retry, raw JSON to disk
 │   ├── transform.py        # pivot arrays, UTC→ICT, three-tier validation
@@ -110,8 +117,14 @@ airquality-etl/
 ├── sql/
 │   ├── schema.sql          # 4 tables
 │   └── analysis.sql        # 16 queries, 5 sections matching this README
-├── tests/test_transform.py # 9 tests
-├── charts/                 # 13 PNG
+├── tests/
+│   ├── test_transform.py   # 9 tests
+│   └── fixtures/            # Test data
+├── scripts/
+│   ├── run_daily.bat        # Run the daily ETL pipeline
+│   └── run_weekly_backfill.bat
+├── requirements.txt
+├── pytest.ini
 └── README.md
 ```
 
