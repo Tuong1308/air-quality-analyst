@@ -334,7 +334,9 @@ the rain.
 > [!NOTE]
 > A weak correlation means the relationship is not linear, not that it does not
 > exist — and a clear gap between groups does not mean the labelled factor caused
-> it. ([chart](charts/03_rain_effect.png))
+> it.
+>
+> ![Rain effect on PM2.5](charts/03_rain_effect.png)
 
 ### 7. Episodes arrive abruptly, so PM2.5 carries no early-warning signal
 
